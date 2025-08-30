@@ -6,21 +6,34 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSupabase } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { supabase } = useSupabase()!;
+  const router = useRouter();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Authentication logic will be implemented here
-    console.log('Sign in with:', email, password);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      console.error('Error signing in:', error.message);
+    } else {
+      router.push('/polls');
+    }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Registration logic will be implemented here
-    console.log('Sign up with:', email, password);
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      console.error('Error signing up:', error.message);
+    } else {
+      // You might want to show a message to check email for confirmation
+      alert('Check your email for a confirmation link.');
+    }
   };
 
   return (

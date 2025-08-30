@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useSupabase } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 type Poll = {
   id: string;
@@ -14,6 +16,8 @@ type Poll = {
 };
 
 export default function PollsPage() {
+  const { session } = useSupabase()!;
+  const router = useRouter();
   // Mock data - will be replaced with actual API calls
   const [polls, setPolls] = useState<Poll[]>([
     {
@@ -38,6 +42,16 @@ export default function PollsPage() {
       votes: 28,
     },
   ]);
+
+  useEffect(() => {
+    if (!session) {
+      router.push('/auth');
+    }
+  }, [session, router]);
+
+  if (!session) {
+    return null;
+  }
 
   return (
     <div className="container mx-auto py-8 px-4">
