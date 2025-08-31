@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useSupabase } from '@/contexts/AuthContext';
 
 type PollOption = {
   id: string;
@@ -15,6 +16,7 @@ type PollOption = {
 
 export default function CreatePollPage() {
   const router = useRouter();
+  const { supabase, session } = useSupabase()!;
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [options, setOptions] = useState<PollOption[]>([
@@ -49,25 +51,57 @@ export default function CreatePollPage() {
       return;
     }
     
-    if (options.filter(opt => opt.text.trim()).length < 2) {
+    const validOptions = options.map(opt => opt.text.trim()).filter(Boolean);
+    if (validOptions.length < 2) {
       alert('Please provide at least 2 options');
       return;
     }
     
+    if (!session) {
+      alert('You must be logged in to create a poll.');
+      router.push('/auth');
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      // In a real app, we would send the data to the server here
-      console.log('Creating poll:', { title, description, options });
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Insert the poll into the 'polls' table
+      const { data: pollData, error: pollError } = await supabase
+        .from('polls')
+        .insert({
+          title,
+          description,
+          user_id: session.user.id,
+        })
+        .select()
+        .single();
+
+      if (pollError) throw pollError;
+
+      // Insert the options into the 'options' table
+      const optionsToInsert = validOptions.map(optionText => ({
+        poll_id: pollData.id,
+        text: optionText,
+      }));
+
+      const { error: optionsError } = await supabase
+        .from('options')
+        .insert(optionsToInsert);
+
+      if (optionsError) throw optionsError;
       
       // Redirect to polls page
       router.push('/polls');
-    } catch (error) {
-      console.error('Error creating poll:', error);
-      alert('Failed to create poll. Please try again.');
+    } catch (error: any) {
+      console.error('Full error creating poll:', JSON.stringify(error, null, 2));
+      let errorMessage = 'Failed to create poll. Please try again.';
+      if (error.message.includes('violates row-level security policy')) {
+        errorMessage = 'Error: You do not have permission to create a poll. Please check the database security policies.';
+      } else {
+        errorMessage = `An unexpected error occurred: ${error.message}`;
+      }
+      alert(errorMessage);
       setIsSubmitting(false);
     }
   };

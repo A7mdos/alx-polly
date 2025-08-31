@@ -11,46 +11,39 @@ type Poll = {
   id: string;
   title: string;
   description: string;
-  createdAt: string;
-  votes: number;
+  created_at: string;
+  // votes: number; // This will be calculated or fetched separately
 };
 
 export default function PollsPage() {
-  const { session } = useSupabase()!;
+  const { session, supabase } = useSupabase()!;
   const router = useRouter();
-  // Mock data - will be replaced with actual API calls
-  const [polls, setPolls] = useState<Poll[]>([
-    {
-      id: '1',
-      title: 'Favorite Programming Language',
-      description: 'What programming language do you prefer to use?',
-      createdAt: '2023-08-28',
-      votes: 42,
-    },
-    {
-      id: '2',
-      title: 'Best Frontend Framework',
-      description: 'Which frontend framework do you think is the best?',
-      createdAt: '2023-08-27',
-      votes: 36,
-    },
-    {
-      id: '3',
-      title: 'Remote Work Preference',
-      description: 'Do you prefer working remotely or in an office?',
-      createdAt: '2023-08-26',
-      votes: 28,
-    },
-  ]);
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!session) {
       router.push('/auth');
+    } else {
+      const fetchPolls = async () => {
+        const { data, error } = await supabase.from('polls').select('*');
+        if (error) {
+          console.error('Error fetching polls:', error);
+        } else {
+          setPolls(data as Poll[]);
+        }
+        setLoading(false);
+      };
+      fetchPolls();
     }
-  }, [session, router]);
+  }, [session, router, supabase]);
 
   if (!session) {
     return null;
+  }
+
+  if (loading) {
+    return <div className="container mx-auto py-8 px-4 text-center">Loading polls...</div>;
   }
 
   return (
@@ -72,11 +65,11 @@ export default function PollsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Created on {new Date(poll.createdAt).toLocaleDateString()}
+                  Created on {new Date(poll.created_at).toLocaleDateString()}
                 </p>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <p className="text-sm">{poll.votes} votes</p>
+                {/* <p className="text-sm">{poll.votes} votes</p> */}
                 <Button variant="ghost" size="sm">
                   View Poll
                 </Button>
@@ -86,7 +79,7 @@ export default function PollsPage() {
         ))}
       </div>
 
-      {polls.length === 0 && (
+      {polls.length === 0 && !loading && (
         <div className="text-center py-12">
           <p className="text-xl text-muted-foreground mb-4">No polls available yet</p>
           <Link href="/create-poll">

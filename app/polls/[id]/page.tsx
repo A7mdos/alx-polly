@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useSupabase } from '@/contexts/AuthContext';
 
 type PollOption = {
   id: string;
@@ -16,7 +17,7 @@ type Poll = {
   id: string;
   title: string;
   description: string;
-  createdAt: string;
+  created_at: string;
   options: PollOption[];
   totalVotes: number;
 };
@@ -24,6 +25,7 @@ type Poll = {
 export default function PollPage() {
   const params = useParams();
   const pollId = params.id as string;
+  const { supabase, session } = useSupabase()!;
   
   const [poll, setPoll] = useState<Poll | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -31,36 +33,81 @@ export default function PollPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data fetch - will be replaced with actual API call
     const fetchPoll = async () => {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Mock data
-      const mockPoll: Poll = {
-        id: pollId,
-        title: 'Favorite Programming Language',
-        description: 'What programming language do you prefer to use?',
-        createdAt: '2023-08-28',
-        options: [
-          { id: 'opt1', text: 'JavaScript', votes: 15 },
-          { id: 'opt2', text: 'Python', votes: 12 },
-          { id: 'opt3', text: 'TypeScript', votes: 8 },
-          { id: 'opt4', text: 'Java', votes: 7 },
-        ],
-        totalVotes: 42,
-      };
-      
-      setPoll(mockPoll);
+      if (!pollId) return;
+
+      // Fetch poll details
+      const { data: pollData, error: pollError } = await supabase
+        .from('polls')
+        .select('*')
+        .eq('id', pollId)
+        .single();
+
+      if (pollError) {
+        console.error('Error fetching poll:', pollError);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch poll options
+      const { data: optionsData, error: optionsError } = await supabase
+        .from('options')
+        .select('*')
+        .eq('poll_id', pollId);
+
+      if (optionsError) {
+        console.error('Error fetching options:', optionsError);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch votes for each option
+      const { data: votesData, error: votesError } = await supabase
+        .from('votes')
+        .select('option_id, count:id')
+        .eq('poll_id', pollId);
+
+      if (votesError) {
+        console.error('Error fetching votes:', votesError);
+      }
+
+      const optionsWithVotes = optionsData.map(option => {
+        const vote = votesData?.find(v => v.option_id === option.id);
+        return { ...option, votes: vote ? (vote as any).count : 0 };
+      });
+
+      const totalVotes = optionsWithVotes.reduce((acc, opt) => acc + opt.votes, 0);
+
+      setPoll({
+        ...pollData,
+        options: optionsWithVotes,
+        totalVotes,
+      });
       setLoading(false);
     };
     
     fetchPoll();
-  }, [pollId]);
+  }, [pollId, supabase]);
 
   const handleVote = async () => {
-    if (!selectedOption || hasVoted || !poll) return;
+    if (!selectedOption || hasVoted || !poll || !session) {
+      if (!session) alert('You must be logged in to vote.');
+      return;
+    }
     
+    // Insert the vote into the 'votes' table
+    const { error } = await supabase.from('votes').insert({
+      poll_id: pollId,
+      option_id: selectedOption,
+      user_id: session.user.id,
+    });
+
+    if (error) {
+      console.error('Error submitting vote:', error);
+      alert('Failed to submit vote. You may have already voted.');
+      return;
+    }
+
     // Update UI optimistically
     setPoll(prev => {
       if (!prev) return prev;
@@ -77,9 +124,6 @@ export default function PollPage() {
     });
     
     setHasVoted(true);
-    
-    // In a real app, we would send the vote to the server here
-    console.log(`Voted for option ${selectedOption} in poll ${pollId}`);
   };
 
   if (loading) {
