@@ -50,17 +50,17 @@ export default function PollsPage() {
     <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Available Polls</h1>
-        <Link href="/create-poll">
-          <Button>Create New Poll</Button>
+        <Link href="/create-poll" className="transition-transform duration-200 hover:scale-105 inline-block">
+          <Button className="font-medium">Create New Poll</Button>
         </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {polls.map((poll) => (
-          <Link href={`/polls/${poll.id}`} key={poll.id} className="block">
-            <Card className="h-full hover:shadow-lg transition-shadow">
+          <Link href={`/polls/${poll.id}`} key={poll.id} className="block transition-all duration-300">
+            <Card className="h-full hover:shadow-lg transition-all">
               <CardHeader>
-                <CardTitle>{poll.title}</CardTitle>
+                <CardTitle className="transition-colors duration-200 group-hover:text-primary">{poll.title}</CardTitle>
                 <CardDescription>{poll.description}</CardDescription>
               </CardHeader>
               <CardContent>
@@ -70,7 +70,7 @@ export default function PollsPage() {
               </CardContent>
               <CardFooter className="flex justify-between">
                 {/* <p className="text-sm">{poll.votes} votes</p> */}
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">
                   View Poll
                 </Button>
               </CardFooter>
@@ -82,8 +82,8 @@ export default function PollsPage() {
       {polls.length === 0 && !loading && (
         <div className="text-center py-12">
           <p className="text-xl text-muted-foreground mb-4">No polls available yet</p>
-          <Link href="/create-poll">
-            <Button>Create Your First Poll</Button>
+          <Link href="/create-poll" className="transition-transform duration-200 hover:scale-105 inline-block">
+            <Button className="font-medium shadow-md hover:shadow-lg">Create Your First Poll</Button>
           </Link>
         </div>
       )}

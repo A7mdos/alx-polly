@@ -13,6 +13,7 @@ export function ThemeToggle() {
       size="icon"
       onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
       title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+      className="hover:rotate-12 hover:text-primary"
     >
       {theme === 'light' ? (
         <Moon className="h-5 w-5" />
